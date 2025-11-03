@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+# ROS2 / colcon
+build/
+install/
+log/
+#VSCode
+.vscode/
