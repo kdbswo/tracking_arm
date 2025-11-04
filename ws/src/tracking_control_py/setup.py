@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'follow_node = tracking_control_py.follow_node:main',
+            'motion_test_node = tracking_control_py.motion_test_node:main',
         ],
     },
 )
