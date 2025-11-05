@@ -52,14 +52,32 @@ def main():
             now = time.time()
             fps = 1.0 / (now - prev) if now > prev else 0.0
             prev = now
+            text = f"FPS: {fps:.1f}"
+            org = (10, 30)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            scale = 1.0
+            thickness = 2
+
+            # Draw text outline for readability
             cv2.putText(
                 display_frame,
-                f"FPS: {fps:.1f}",
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,
-                (255, 255, 255),
-                2,
+                text,
+                org,
+                font,
+                scale,
+                (0, 0, 0),
+                thickness + 2,
+                lineType=cv2.LINE_AA,
+            )
+            cv2.putText(
+                display_frame,
+                text,
+                org,
+                font,
+                scale,
+                (0, 255, 255),
+                thickness,
+                lineType=cv2.LINE_AA,
             )
             cv2.imshow("YOLO Detection (MJPEG Stream)", display_frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
