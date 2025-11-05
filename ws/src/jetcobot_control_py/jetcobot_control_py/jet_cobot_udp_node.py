@@ -29,6 +29,10 @@ class JetcobotUdpNode(Node):
         self.declare_parameter("width", 640)  # 캡처 가로 해상도
         self.declare_parameter("height", 480)  # 캡처 세로 해상도
         self.declare_parameter("fps", 30.0)  # 목표 FPS
+        self.declare_parameter(
+            "gstreamer_pipeline",
+            "",
+        )  # 비어 있으면 기본 파이프라인 사용, 문자열이면 그대로 사용
 
         # 파라미터 값을 실제 멤버 변수로 읽어온다
         self.udp_host = self.get_parameter("udp_host").get_parameter_value().string_value
@@ -45,22 +49,53 @@ class JetcobotUdpNode(Node):
         fps = float(self.get_parameter("fps").value)
 
         # OpenCV로 카메라 디바이스 초기화
-        self.cap = cv2.VideoCapture(cam_device)
-        if not self.cap.isOpened():
-            self.get_logger().warn(f"카메라를 열 수 없습니다: {cam_device}")
-        else:
-            if width > 0:
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)  # 가로 해상도 적용
-            if height > 0:
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)  # 세로 해상도 적용
-            if fps > 0:
-                self.cap.set(cv2.CAP_PROP_FPS, fps)  # FPS 적용
+        pipeline_override = self.get_parameter("gstreamer_pipeline").get_parameter_value().string_value
+        self.cap = self._open_capture(cam_device, width, height, fps, pipeline_override)
 
         # 스레드 종료를 제어하기 위한 이벤트
         self._stop_event = threading.Event()
         # 영상 송출을 담당할 백그라운드 스레드 시작
         self._video_thread = threading.Thread(target=self._stream_loop, daemon=True)
         self._video_thread.start()
+
+    def _open_capture(
+        self, device: str, width: int, height: int, fps: float, pipeline_override: str
+    ) -> cv2.VideoCapture:
+        """Try to open the capture device with sensible fallbacks."""
+        if pipeline_override:
+            cap = cv2.VideoCapture(pipeline_override, cv2.CAP_GSTREAMER)
+            if not cap.isOpened():
+                self.get_logger().warn("지정한 GStreamer 파이프라인으로 열 수 없습니다.")
+                cap.release()
+        else:
+            cap = cv2.VideoCapture(device, cv2.CAP_V4L2)  # 우선 V4L2 백엔드 시도
+            if cap.isOpened():
+                if width > 0:
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                if height > 0:
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                if fps > 0:
+                    cap.set(cv2.CAP_PROP_FPS, fps)
+
+        if not cap.isOpened():
+            pipeline = (
+                pipeline_override
+                if pipeline_override
+                else f"v4l2src device={device} ! video/x-raw,format=YUY2,width={width},height={height},framerate={int(fps)}/1 ! videoconvert ! appsink"
+            )
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)  # GStreamer 파이프라인 시도
+
+        if not cap.isOpened():
+            self.get_logger().warn(f"카메라를 열 수 없습니다: {device}")
+            return cap
+
+        if width > 0:
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        if height > 0:
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        if fps > 0:
+            cap.set(cv2.CAP_PROP_FPS, fps)
+        return cap
 
     def _stream_loop(self) -> None:
         """카메라 프레임을 읽어 UDP로 끊김 없이 보내는 루프."""
