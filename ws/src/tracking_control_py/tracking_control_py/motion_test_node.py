@@ -10,7 +10,7 @@ class MotionTestNode(Node):
     def __init__(self):
         super().__init__("motion_test_node")
         self.declare_parameter("port", "/dev/ttyJETCOBOT")
-        self.declare_parameter("baud", 115200)
+        self.declare_parameter("baud", 1000000)
         self.declare_parameter("speed", 30)
 
         self.port = self.get_parameter("port").value
@@ -18,11 +18,16 @@ class MotionTestNode(Node):
         self.speed = int(self.get_parameter("speed").value)
 
         # 간단한 각도 시퀀스로 왕복 동작 확인
+        # self.sequence = [
+        #     [0, 0, 0, 0, 0, 0],
+        #     [5, 5, 5, 0, 0, 0],
+        #     [-10, 15, -20, 0, 0, 0],
+        # ]
+        # 간단한 각도 시퀀스로 왕복 동작 확인
         self.sequence = [
-            [0, 0, 0, 0, 0, 0],
-            [10, -15, 20, 0, 5, 0],
-            [-10, 15, -20, 0, -5, 0],
+            [0, 0, 0, 0, -60, 0],
         ]
+
         self.seq_idx = 0
         self.mc = None
         self._connect()
@@ -44,6 +49,9 @@ class MotionTestNode(Node):
     def _tick(self):
         if self.mc is None:
             return
+
+        current_angles = self.mc.get_angles()
+        self.get_logger().info(f"현재 각도: {current_angles}")
 
         target = self.sequence[self.seq_idx]
         try:
