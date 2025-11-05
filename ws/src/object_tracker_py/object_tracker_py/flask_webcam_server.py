@@ -45,7 +45,7 @@ def capture_frames():
             last_log = now
 
         # 프레임 캡처 간격
-        time.sleep(0.03)  # ~30fps
+        time.sleep(0.02)  # ~30fps
 
 
 def generate_frames():
