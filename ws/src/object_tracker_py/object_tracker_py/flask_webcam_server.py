@@ -21,16 +21,28 @@ def capture_frames():
         print("카메라를 열 수 없습니다.")
         return
 
+    frame_count = 0
+    last_log = time.time()
+
     while True:
         success, img = camera.read()
         if not success:
             print("프레임을 읽을 수 없습니다.")
             time.sleep(0.1)
             continue
+
         # 프레임 인코딩 및 저장
         _, buffer = cv2.imencode(".jpg", img)
         with frame_lock:
             frame = buffer.tobytes()
+
+        frame_count += 1
+        now = time.time()
+        if now - last_log >= 1.0:
+            elapsed = now - last_log
+            print(f"capture fps: {frame_count / elapsed:.1f}")
+            frame_count = 0
+            last_log = now
 
         # 프레임 캡처 간격
         time.sleep(0.03)  # ~30fps
