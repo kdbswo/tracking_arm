@@ -30,7 +30,7 @@ def capture_frames():
         # 프레임 인코딩 및 저장
         _, buffer = cv2.imencode(".jpg", img)
         with frame_lock:
-            frame - buffer.tobytes()
+            frame = buffer.tobytes()
 
         # 프레임 캡처 간격
         time.sleep(0.03)  # ~30fps
