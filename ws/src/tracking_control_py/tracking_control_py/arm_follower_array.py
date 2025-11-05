@@ -15,16 +15,16 @@ class ArmFollowerNode(Node):
 
         # ---- 파라미터 ----
         self.declare_parameter("port", "/dev/ttyJETCOBOT")
-        self.declare_parameter("baud", 115200)
+        self.declare_parameter("baud", 1000000)
         self.declare_parameter("speed", 30)
         # 팬/틸트에 대응할 조인트 인덱스 (예: J1=베이스 회전, J2=숄더 피치)
-        self.declare_parameter("pan_joint", 0)   # J1
+        self.declare_parameter("pan_joint", 0)  # J1
         self.declare_parameter("tilt_joint", 1)  # J2
         # 제어 주기(Hz), 각속도 스케일, 각도 제한
         self.declare_parameter("control_hz", 30.0)
-        self.declare_parameter("cmd_scale", 1.0)         # YOLO -> 각속도(rad/s) 스케일
-        self.declare_parameter("deg_limit", 80.0)        # 각도 제한(절대값, 도)
-        self.declare_parameter("deadband", 0.002)        # 너무 작은 명령 무시(라디안/초)
+        self.declare_parameter("cmd_scale", 1.0)  # YOLO -> 각속도(rad/s) 스케일
+        self.declare_parameter("deg_limit", 80.0)  # 각도 제한(절대값, 도)
+        self.declare_parameter("deadband", 0.002)  # 너무 작은 명령 무시(라디안/초)
 
         self.port = self.get_parameter("port").value
         self.baud = int(self.get_parameter("baud").value)
@@ -98,12 +98,16 @@ class ArmFollowerNode(Node):
         d_tilt_deg = np.degrees(d_tilt_rad)
 
         # 목표 각도 갱신
-        self.target_deg[self.pan_joint]  += d_pan_deg
+        self.target_deg[self.pan_joint] += d_pan_deg
         self.target_deg[self.tilt_joint] += d_tilt_deg
 
         # 안전 제한
-        self.target_deg[self.pan_joint]  = float(np.clip(self.target_deg[self.pan_joint],  -self.deg_limit, self.deg_limit))
-        self.target_deg[self.tilt_joint] = float(np.clip(self.target_deg[self.tilt_joint], -self.deg_limit, self.deg_limit))
+        self.target_deg[self.pan_joint] = float(
+            np.clip(self.target_deg[self.pan_joint], -self.deg_limit, self.deg_limit)
+        )
+        self.target_deg[self.tilt_joint] = float(
+            np.clip(self.target_deg[self.tilt_joint], -self.deg_limit, self.deg_limit)
+        )
 
         try:
             self.mc.send_angles(self.target_deg, self.speed)
