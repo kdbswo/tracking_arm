@@ -12,6 +12,7 @@ setup(
     ],
     install_requires=[
         "setuptools",
+        "Flask",
         "opencv-python",
         "numpy",
         "requests",

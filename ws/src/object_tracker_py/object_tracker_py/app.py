@@ -42,7 +42,7 @@ def main():
     global TARGET_ID, CLICK_PT
 
     init_ros2()
-    server_url = "http://192.168.0.164:5000/stream"
+    server_url = "http://192.168.0.165:5000/stream"
     client = VideoStreamClient(server_url)
     client.start_stream()
 
