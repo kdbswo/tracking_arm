@@ -20,3 +20,23 @@
   to:
     domain: 31
     topic: /arm/cmd
+
+# Control PC domain -> Robot domain
+- name: arm_cmd_pc_to_robot
+  from:
+    domain: 20
+    topic: /arm/cmd
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 32
+    topic: /arm/cmd
+
+# Control PC domain -> Robot domain
+- name: arm_cmd_pc_to_robot
+  from:
+    domain: 20
+    topic: /arm/cmd
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 21
+    topic: /arm/cmd
