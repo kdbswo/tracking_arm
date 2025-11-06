@@ -12,6 +12,7 @@ class ArmCmdPub(Node):
         msg = Float32MultiArray()
         msg.data = [float(pan_cmd), float(tilt_cmd)]
         self.pub.publish(msg)
+        self.get_logger().info(f"팔 좌표 전송 pan={float(pan_cmd):+.4f}, tilt={float(tilt_cmd):+.4f}")
 
 
 _arm_node = None

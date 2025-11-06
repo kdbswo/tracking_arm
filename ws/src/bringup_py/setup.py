@@ -11,6 +11,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         (
+            'share/' + package_name + '/config',
+            ['config/domain_bridge_arm_cmd.yaml'],
+        ),
+        (
             'share/' + package_name + '/launch',
             [
                 'launch/tracking_bringup.launch.py',
