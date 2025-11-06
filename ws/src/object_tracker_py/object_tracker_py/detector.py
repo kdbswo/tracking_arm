@@ -15,18 +15,11 @@ class Detector:
         classes: list[int] | None = [0],
     ):
         self.model = YOLO(weights)
-        if device is None:
-            self.model.to(device)
-        elif torch.cuda.is_available():
-            self.model.to("cuda")
-
-            try:
-                self.model.model.half()
-            except Exception:
-                pass
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
         self.conf = conf
         self.imgsz = imgsz
-        self.user_tracker = use_tracker
+        self.use_tracker = use_tracker
         self.tracker_cfg = tracker_cfg
         self.classes = classes
 
@@ -44,6 +37,27 @@ class Detector:
             classes=self.classes,
         )[0]
         return res
+
+    def track(self, frame):
+        """
+        추적을 위해 YOLOv8 track API를 감싼 래퍼.
+        frame: BGR np.ndarray (H,W,3)
+        return: results(ultralytics Results)
+        """
+        if not self.use_tracker:
+            return self.infer(frame)
+
+        res = self.model.track(
+            frame,
+            conf=self.conf,
+            imgsz=self.imgsz if self.imgsz else None,
+            verbose=False,
+            tracker=self.tracker_cfg,
+            classes=self.classes,
+            persist=True,
+        )
+        # track()가 리스트를 반환하므로 첫 결과만 사용
+        return res[0] if isinstance(res, list) else res
 
     @staticmethod
     def draw(frame, results, target_id=None):
