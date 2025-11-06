@@ -1,8 +1,14 @@
 import time, threading, math
 import cv2
-from flask_webcam_client import VideoStreamClient
-from detector import Detector
-from arm_cmd_node import init_ros2, spin_once, send_cmd
+
+try:
+    from .flask_webcam_client import VideoStreamClient
+    from .detector import Detector
+    from .arm_cmd_node import init_ros2, spin_once, send_cmd
+except ImportError:  # pragma: no cover - allow running as a loose script
+    from flask_webcam_client import VideoStreamClient
+    from detector import Detector
+    from arm_cmd_node import init_ros2, spin_once, send_cmd
 
 TARGET_ID = None
 CLICK_PT = None
