@@ -10,7 +10,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    install_requires=["setuptools", "pymycobot"],
+    install_requires=["setuptools", "numpy", "pymycobot", "rclpy", "std_msgs"],
     zip_safe=True,
     maintainer="addinedu",
     maintainer_email="kdbswo@gmail.com",

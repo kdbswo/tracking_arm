@@ -29,7 +29,6 @@ class VideoStreamClient:
         self.stream_thread = threading.Thread(target=self._receive_stream)
         self.stream_thread.daemon = True
         self.stream_thread.start()
-    
 
     def stop_stream(self):
         """스트림 수신 중지"""
@@ -94,22 +93,18 @@ class VideoStreamClient:
             self.stream_active = False
 
 
-if __name__ == "__main__":
-    # 서버 URL 설정
+def main():
     server_url = "http://192.168.0.164:5000/stream"
 
-    # 클라이언트 생성 및 시작
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    # 프레임 표시 루프
     try:
         while True:
             frame = client.get_latest_frame()
             if frame is not None:
                 cv2.imshow("Jetcobot Camera Stream", frame)
 
-            # 'q' 키를 누르면 종료
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     except KeyboardInterrupt:
@@ -117,3 +112,7 @@ if __name__ == "__main__":
     finally:
         client.stop_stream()
         cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()

@@ -71,9 +71,13 @@ def video_feed():
     )
 
 
-if __name__ == "__main__":
+def main():
     capture_thread = threading.Thread(target=capture_frames)
     capture_thread.daemon = True
     capture_thread.start()
 
     app.run(host="0.0.0.0", port=5000, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

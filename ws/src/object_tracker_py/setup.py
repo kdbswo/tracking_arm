@@ -10,7 +10,16 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
     ],
-    install_requires=["setuptools", "opencv-python", "numpy", "rclpy", "std_msgs"],
+    install_requires=[
+        "setuptools",
+        "opencv-python",
+        "numpy",
+        "requests",
+        "ultralytics",
+        "torch",
+        "rclpy",
+        "std_msgs",
+    ],
     zip_safe=True,
     maintainer="addinedu",
     maintainer_email="kdbswo@gmail.com",
@@ -19,7 +28,9 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "udp_streamer_node = object_tracker_py.udp_streamer_node:main",
+            "pc_tracker_app = object_tracker_py.app:main",
+            "flask_webcam_server = object_tracker_py.flask_webcam_server:main",
+            "flask_webcam_client = object_tracker_py.flask_webcam_client:main",
             "udp_receiver = object_tracker_py.udp_receiver:main",
         ]
     },
