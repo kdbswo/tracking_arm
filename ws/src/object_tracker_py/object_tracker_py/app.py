@@ -2,11 +2,11 @@ import time, threading, math
 import cv2
 
 try:
-    from .flask_webcam_client import VideoStreamClient
+    from .flask_webcam_client import VideoStreamClient, resolve_stream_url
     from .detector import Detector
     from .arm_cmd_node import init_ros2, spin_once, send_cmd, send_init_pose
 except ImportError:  # pragma: no cover - allow running as a loose script
-    from flask_webcam_client import VideoStreamClient
+    from flask_webcam_client import VideoStreamClient, resolve_stream_url
     from detector import Detector
     from arm_cmd_node import init_ros2, spin_once, send_cmd, send_init_pose
 
@@ -42,7 +42,7 @@ def main():
     global TARGET_ID, CLICK_PT
 
     init_ros2()
-    server_url = "http://192.168.0.165:5000/stream"
+    server_url = resolve_stream_url()
     client = VideoStreamClient(server_url)
     client.start_stream()
 

@@ -1,3 +1,6 @@
+import importlib.util
+import os  # 환경 변수로 기본 IP/포트 제어
+from pathlib import Path
 import socket  # UDP 전송을 위해 사용
 import threading  # 영상 전송을 별도 스레드로 처리하기 위해 사용
 import time  # 전송 주기 제어를 위한 sleep 호출에 사용
@@ -7,6 +10,43 @@ from pymycobot.mycobot280 import MyCobot280  # MyCobot 280 본체 접속을 위�
 import cv2  # OpenCV: 카메라 프레임 캡처 및 JPEG 인코딩 담당
 import rclpy  # ROS 2 파이썬 클라이언트 라이브러리
 from rclpy.node import Node  # ROS 2 노드 기반 클래스
+
+
+def _import_env_loader():
+    try:
+        import env_loader  # type: ignore
+        return env_loader
+    except ModuleNotFoundError:
+        current = Path(__file__).resolve()
+        for root in [current.parent, *current.parents]:
+            candidate = root / "env_loader.py"
+            if candidate.is_file():
+                spec = importlib.util.spec_from_file_location("env_loader", candidate)
+                module = importlib.util.module_from_spec(spec)
+                assert spec and spec.loader
+                spec.loader.exec_module(module)
+                return module
+        raise
+
+
+ensure_env_loaded = _import_env_loader().ensure_env_loaded
+
+
+DEFAULT_UDP_HOST = "192.168.0.17"
+DEFAULT_UDP_PORT = 6240
+
+
+ensure_env_loaded(search_from=__file__)
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
 
 
 class JetcobotUdpNode(Node):
@@ -20,8 +60,11 @@ class JetcobotUdpNode(Node):
         self.get_logger().info("로봇이 연결되었습니다.")  # 연결 성공 로그 출력
 
         # UDP 송출에 사용할 파라미터 등록
-        self.declare_parameter("udp_host", "192.168.0.17")  # 영상 수신 PC IP
-        self.declare_parameter("udp_port", 6240)  # 수신 PC UDP 포트
+        udp_host_default = os.getenv("JETCOBOT_UDP_HOST", DEFAULT_UDP_HOST)
+        udp_port_default = _env_int("JETCOBOT_UDP_PORT", DEFAULT_UDP_PORT)
+
+        self.declare_parameter("udp_host", udp_host_default)  # 영상 수신 PC IP
+        self.declare_parameter("udp_port", udp_port_default)  # 수신 PC UDP 포트
         self.declare_parameter("jpeg_quality", 80)  # JPEG 인코딩 품질(기본 80)
 
         # 영상 캡처에 필요한 카메라 설정 파라미터 등록

@@ -1,3 +1,6 @@
+import importlib.util
+import os
+from pathlib import Path
 import cv2
 import numpy as np
 import requests
@@ -5,15 +8,48 @@ import threading
 import time
 
 
+def _import_env_loader():
+    try:
+        import env_loader  # type: ignore
+        return env_loader
+    except ModuleNotFoundError:
+        current = Path(__file__).resolve()
+        for root in [current.parent, *current.parents]:
+            candidate = root / "env_loader.py"
+            if candidate.is_file():
+                spec = importlib.util.spec_from_file_location("env_loader", candidate)
+                module = importlib.util.module_from_spec(spec)
+                assert spec and spec.loader
+                spec.loader.exec_module(module)
+                return module
+        raise
+
+
+ensure_env_loaded = _import_env_loader().ensure_env_loaded
+
+
+DEFAULT_STREAM_URL = "http://192.168.0.165:5000/stream"
+
+
+ensure_env_loaded(search_from=__file__)
+
+
+def resolve_stream_url(override=None):
+    """Return the stream URL, preferring env overrides when provided."""
+    if override:
+        return override
+    return os.getenv("JETCOBOT_STREAM_URL", DEFAULT_STREAM_URL)
+
+
 class VideoStreamClient:
-    def __init__(self, server_url):
+    def __init__(self, server_url=None):
         """
         비디오 스트림 클라이언트 초기화
 
         Args:
             server_url (str): 서버스트림 URL (예: 'http://192.168.5.1:5000/stream')
         """
-        self.server_url = server_url
+        self.server_url = resolve_stream_url(server_url)
         self.stream_active = False
         self.stream_thread = None
         self.latest_frame = None
@@ -92,7 +128,7 @@ class VideoStreamClient:
 
 
 def main():
-    server_url = "http://192.168.0.165:5000/stream"
+    server_url = resolve_stream_url()
 
     client = VideoStreamClient(server_url)
     client.start_stream()
