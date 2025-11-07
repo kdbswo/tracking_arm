@@ -18,10 +18,10 @@ def generate_launch_description():
         output="screen",
     )
 
-    viewer_process = ExecuteProcess(
-        cmd=["python3", "-m", "object_tracker_py.flask_webcam_client"],
-        output="screen",
-    )
+    # viewer_process = ExecuteProcess(
+    #     cmd=["python3", "-m", "object_tracker_py.flask_webcam_client"],
+    #     output="screen",
+    # )
 
     domain_bridge_node = Node(
         package="domain_bridge",
@@ -34,7 +34,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             app_process,
-            viewer_process,
+            # viewer_process,
             domain_bridge_node,
         ]
     )
