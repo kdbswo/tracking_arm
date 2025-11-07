@@ -1,16 +1,6 @@
 # Domain bridge configuration for relaying /arm/cmd between two DDS domains.
 # Update the domain IDs to match your robot and control PC environments.
 
-# Robot domain -> Control PC domain
-- name: arm_cmd_robot_to_pc
-  from:
-    domain: 31       # Set to robot ROS_DOMAIN_ID
-    topic: /arm/cmd
-    type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 20         # Set to control PC ROS_DOMAIN_ID
-    topic: /arm/cmd
-
 # Control PC domain -> Robot domain
 - name: arm_cmd_pc_to_robot
   from:
@@ -40,3 +30,34 @@
   to:
     domain: 21
     topic: /arm/cmd
+
+
+# pc -> arm 로봇 현재 각도
+- name: arm_state_robot_to_pc
+  from:
+    domain: 21
+    topic: /arm/state
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 20
+    topic: /arm/state
+
+# pc -> arm 로봇 현재 각도
+- name: arm_state_robot_to_pc
+  from:
+    domain: 31
+    topic: /arm/state
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 20
+    topic: /arm/state
+
+# pc -> arm 로봇 현재 각도
+- name: arm_state_robot_to_pc
+  from:
+    domain: 32
+    topic: /arm/state
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 20
+    topic: /arm/state

@@ -52,6 +52,11 @@ class ArmFollowerNode(Node):
             Float32MultiArray, "/arm/cmd", self.cmd_callback, 10
         )
 
+        # 퍼블리셔: 현재 목표 각도를 PC 측에 공유
+        self.state_pub = self.create_publisher(
+            Float32MultiArray, "/arm/state", 10
+        )
+
         # 제어 루프 타이머
         self.dt = 1.0 / self.control_hz
         self.timer = self.create_timer(self.dt, self._control_step)
@@ -113,3 +118,22 @@ class ArmFollowerNode(Node):
             self.mc.send_angles(self.target_deg, self.speed)
         except Exception as exc:
             self.get_logger().warn(f"각도 전송 실패: {exc}")
+
+        self._publish_state()
+
+    def _publish_state(self):
+        if self.mc is None:
+            return
+
+        try:
+            current_deg = self.mc.get_angles()
+        except Exception as exc:
+            self.get_logger().warn(f"현재 각도 조회 실패: {exc}")
+            return
+
+        if not current_deg:
+            return
+
+        msg = Float32MultiArray()
+        msg.data = [float(angle) for angle in current_deg]
+        self.state_pub.publish(msg)

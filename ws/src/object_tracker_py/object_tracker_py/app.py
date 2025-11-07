@@ -158,14 +158,14 @@ def main():
                     thickness=2,
                 )
                 # PID
-                now = time.time()
-                dt = max(1e-3, now - prev)
-                prev = now
-                ex = cx_ref - tx  # +면 오른쪽으로 팬
-                ey = cy_ref - ty  # +면 위로 틸트
-                pan_cmd = pid_x.step(ex, dt)
-                tilt_cmd = pid_y.step(ey, dt)
-                control_robot_arm(pan_cmd, tilt_cmd)
+                now = time.time()  # 현재 시각
+                dt = max(1e-3, now - prev)  # 지난 루프 대비 경과시간 (최소값 보장)
+                prev = now  # 다음 루프를 위해 현재 시각 저장
+                ex = cx_ref - tx  # +면 오른쪽으로 팬해야 함
+                ey = cy_ref - ty  # +면 위로 틸트해야 함
+                pan_cmd = pid_x.step(ex, dt)  # 팬축 PID 제어 출력
+                tilt_cmd = pid_y.step(ey, dt)  # 틸트축 PID 제어 출력
+                control_robot_arm(pan_cmd, tilt_cmd)  # 계산된 명령을 로봇팔에 전달
 
             cv2.putText(
                 display,
@@ -193,6 +193,7 @@ def main():
                 print("[RELEASE] clear target")
             if key == ord("q"):
                 break
+            
     finally:
         stop_event.set()
         t.join(timeout=1.0)

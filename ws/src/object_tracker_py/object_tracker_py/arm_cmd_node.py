@@ -7,12 +7,20 @@ class ArmCmdPub(Node):
     def __init__(self):
         super().__init__("arm_cmd_pub")
         self.pub = self.create_publisher(Float32MultiArray, "/arm/cmd", 10)
+        self.create_subscription(
+            Float32MultiArray, "/arm/state", self._state_callback, 10
+        )
 
     def send(self, pan_cmd, tilt_cmd):
         msg = Float32MultiArray()
         msg.data = [float(pan_cmd), float(tilt_cmd)]
         self.pub.publish(msg)
-        self.get_logger().info(f"팔 좌표 전송 pan={float(pan_cmd):+.4f}, tilt={float(tilt_cmd):+.4f}")
+        self.get_logger().info(
+            f"팔 좌표 전송 pan={float(pan_cmd):+.4f}, tilt={float(tilt_cmd):+.4f}"
+        )
+
+    def _state_callback(self, msg):
+        self.get_logger().info(f"현재 팔 각도: {msg.data}")
 
 
 _arm_node = None
