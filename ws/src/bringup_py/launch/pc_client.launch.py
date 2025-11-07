@@ -27,7 +27,7 @@ def generate_launch_description():
         package="domain_bridge",
         executable="domain_bridge",
         name="arm_cmd_bridge",
-        arguments=["--config", bridge_config],
+        arguments=[bridge_config],
         output="screen",
     )
 
