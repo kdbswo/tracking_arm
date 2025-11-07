@@ -47,9 +47,7 @@ class VideoStreamClient:
         """비디오 스트림 수신 및 처리하는 내부 메서드"""
         try:
             # 스트림에 연결
-            response = requests.get(
-                self.server_url, stream=True, timeout=(3.0, 10.0)
-            )
+            response = requests.get(self.server_url, stream=True, timeout=(3.0, 10.0))
 
             if response.status_code != 200:
                 print(f"스트림 연결 실패: 상태 코드 {response.status_code}")
@@ -94,7 +92,7 @@ class VideoStreamClient:
 
 
 def main():
-    server_url = "http://192.168.0.164:5000/stream"
+    server_url = "http://192.168.0.165:5000/stream"
 
     client = VideoStreamClient(server_url)
     client.start_stream()

@@ -42,12 +42,11 @@ def main():
     global TARGET_ID, CLICK_PT
 
     init_ros2()
-    server_url = "http://192.168.0.161:5000/stream"
+    server_url = "http://192.168.0.165:5000/stream"
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    pose_cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    send_init_pose(pose_cmd)
+    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, 0.0]
 
     detector = Detector(
         weights="yolov8n.pt",
@@ -187,7 +186,7 @@ def main():
             )
             cv2.putText(
                 display,
-                "Click person to lock. [r]=release [q]=quit",
+                "Click person to lock. [r]=release [q]=quit [f]=init pose",
                 (10, H - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
@@ -202,6 +201,12 @@ def main():
                 print("[RELEASE] clear target")
             if key == ord("q"):
                 break
+            if key == ord("f"):
+                send_init_pose(pose_cmd)
+                print(f"[RELEASE] init pose {pose_cmd}")
+
+            # Keep ROS callbacks (e.g., /arm/state) flowing even when no cmd publish
+            spin_once()
 
     finally:
         stop_event.set()
