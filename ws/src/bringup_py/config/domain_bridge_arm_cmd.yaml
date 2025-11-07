@@ -2,7 +2,7 @@
 # Update the domain IDs to match your robot and control PC environments.
 
 # Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot
+- name: arm_cmd_pc_to_robot31
   from:
     domain: 20
     topic: /arm/cmd
@@ -12,7 +12,7 @@
     topic: /arm/cmd
 
 # Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot
+- name: arm_cmd_pc_to_robot32
   from:
     domain: 20
     topic: /arm/cmd
@@ -22,7 +22,7 @@
     topic: /arm/cmd
 
 # Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot
+- name: arm_cmd_pc_to_robot21
   from:
     domain: 20
     topic: /arm/cmd
@@ -33,7 +33,7 @@
 
 
 # pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc
+- name: arm_state_robot_to_pc21
   from:
     domain: 21
     topic: /arm/state
@@ -43,7 +43,7 @@
     topic: /arm/state
 
 # pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc
+- name: arm_state_robot_to_pc31
   from:
     domain: 31
     topic: /arm/state
@@ -53,7 +53,7 @@
     topic: /arm/state
 
 # pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc
+- name: arm_state_robot_to_pc32
   from:
     domain: 32
     topic: /arm/state
@@ -61,3 +61,34 @@
   to:
     domain: 20
     topic: /arm/state
+
+
+# pc -> pose 자세제어
+- name: arm_pose_pc_to_robot_arm31
+  from:
+    domain: 20
+    topic: /arm/pose_cmd
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 31
+    topic: /arm/pose_cmd
+
+# pc -> pose 자세제어
+- name: arm_pose_pc_to_robot_arm32
+  from:
+    domain: 20
+    topic: /arm/pose_cmd
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 32
+    topic: /arm/pose_cmd
+
+# pc -> pose 자세제어
+- name: arm_pose_pc_to_robot_arm21
+  from:
+    domain: 20
+    topic: /arm/pose_cmd
+    type: std_msgs/msg/Float32MultiArray
+  to:
+    domain: 21
+    topic: /arm/pose_cmd

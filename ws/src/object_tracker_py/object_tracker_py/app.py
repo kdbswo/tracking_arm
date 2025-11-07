@@ -46,7 +46,8 @@ def main():
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    send_init_pose()
+    pose_cmd = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    send_init_pose(pose_cmd)
 
     detector = Detector(
         weights="yolov8n.pt",

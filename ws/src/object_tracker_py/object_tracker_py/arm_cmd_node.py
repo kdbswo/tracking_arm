@@ -20,11 +20,11 @@ class ArmCmdPub(Node):
             f"팔 좌표 전송 pan={float(pan_cmd):+.4f}, tilt={float(tilt_cmd):+.4f}"
         )
 
-    def send_init_pose(self):
+    def send_init_pose(self, pose_cmd):
         msg = Float32MultiArray()
-        msg.data = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        msg.data = pose_cmd
         self.pose_pub.publish(msg)
-        self.get_logger().info(f"초기 자세 설정:{msg.data}")
+        self.get_logger().info(f"pose 자세 설정:{msg.data}")
 
     def _state_callback(self, msg):
         self.get_logger().info(f"현재 팔 각도: {msg.data}")
@@ -47,5 +47,5 @@ def send_cmd(pan_cmd, tilt_cmd):
     _arm_node.send(pan_cmd, tilt_cmd)
 
 
-def send_init_pose():
-    _arm_node.send_init_pose()
+def send_init_pose(pose_cmd):
+    _arm_node.send_init_pose(pose_cmd)

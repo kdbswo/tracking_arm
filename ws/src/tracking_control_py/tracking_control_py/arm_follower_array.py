@@ -52,9 +52,12 @@ class ArmFollowerNode(Node):
             Float32MultiArray, "/arm/cmd", self.cmd_callback, 10
         )
 
-        # 퍼블리셔: 현재 목표 각도를 PC 측에 공유
-        self.state_pub = self.create_publisher(
-            Float32MultiArray, "/arm/state", 10
+        # 퍼블리셔: 현재 각도를 PC 측에 공유
+        self.state_pub = self.create_publisher(Float32MultiArray, "/arm/state", 10)
+
+        # 구독: 자세 pose를 pc에서 받기
+        self.pose_sub = self.create_subscription(
+            Float32MultiArray, "/arm/pose_cmd", self.pose_cmd_callback, 10
         )
 
         # 제어 루프 타이머
@@ -90,6 +93,19 @@ class ArmFollowerNode(Node):
         # 스케일 적용
         self.last_pan_vel = pan_cmd * self.cmd_scale
         self.last_tilt_vel = tilt_cmd * self.cmd_scale
+
+    def pose_cmd_callback(self, msg: Float32MultiArray):
+        if self.mc is None:
+            return  # 아직 MyCobot 연결이 없으면 처리하지 않음
+        if len(msg.data) != 6:
+            self.get_logger().warn("초기 자세는 6개의 각도가 있어야 합니다.")
+            return
+        angles = [float(v) for v in msg.data]
+        try:
+            self.mc.send_angles(angles, self.speed)
+            self.target_deg = angles[:]
+        except Exception as exc:
+            self.get_logger().warn(f"초기 자세 전송 싪패: {exc}")
 
     def _control_step(self):
         if self.mc is None:
