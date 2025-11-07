@@ -100,23 +100,23 @@ def main():
                 and CLICK_PT is not None
                 and results.boxes is not None
             ):
-                x_click, y_click = CLICK_PT
-                CLICK_PT = None
+                x_click, y_click = CLICK_PT  # 최근 마우스 클릭 좌표 복사
+                CLICK_PT = None  # 한 번 처리한 클릭 좌표는 초기화
                 if results.boxes.id is not None:
-                    xyxy = results.boxes.xyxy.cpu().numpy()
-                    ids = results.boxes.id.int().cpu().numpy()
-                    clss = results.boxes.cls.int().cpu().numpy()
-                    best_id, best_d = None, 1e9
+                    xyxy = results.boxes.xyxy.cpu().numpy()  # 각 감지 박스의 [x1,y1,x2,y2]
+                    ids = results.boxes.id.int().cpu().numpy()  # 추적 ID 배열
+                    clss = results.boxes.cls.int().cpu().numpy()  # 클래스 인덱스 배열 (예: person=0)
+                    best_id, best_d = None, 1e9  # 가장 가까운 박스 정보 초기값
                     for bb, tid, cls in zip(xyxy, ids, clss):
-                        if results.names[int(cls)] != "person":
+                        if results.names[int(cls)] != "person":  # 사람 클래스만 대상으로 삼음
                             continue
-                        x1, y1, x2, y2 = map(int, bb)
-                        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                        d = math.hypot(cx - x_click, cy - y_click)
+                        x1, y1, x2, y2 = map(int, bb)  # 박스 좌표 정수화
+                        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2  # 박스 중심 계산
+                        d = math.hypot(cx - x_click, cy - y_click)  # 클릭 위치와의 거리
                         if d < best_d:
-                            best_d, best_id = d, int(tid)
+                            best_d, best_id = d, int(tid)  # 더 가까우면 후보 갱신
                     if best_id is not None:
-                        TARGET_ID = best_id
+                        TARGET_ID = best_id  # 타깃 ID 잠금
                         print(f"[LOCK] TARGET_ID={TARGET_ID}")
 
             # 제어: 타깃이 있으면 중심 오차 → PID → 로봇팔 명령
