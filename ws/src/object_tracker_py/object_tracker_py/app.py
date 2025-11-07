@@ -4,11 +4,11 @@ import cv2
 try:
     from .flask_webcam_client import VideoStreamClient
     from .detector import Detector
-    from .arm_cmd_node import init_ros2, spin_once, send_cmd
+    from .arm_cmd_node import init_ros2, spin_once, send_cmd, send_init_pose
 except ImportError:  # pragma: no cover - allow running as a loose script
     from flask_webcam_client import VideoStreamClient
     from detector import Detector
-    from arm_cmd_node import init_ros2, spin_once, send_cmd
+    from arm_cmd_node import init_ros2, spin_once, send_cmd, send_init_pose
 
 TARGET_ID = None
 CLICK_PT = None
@@ -45,6 +45,8 @@ def main():
     server_url = "http://192.168.0.161:5000/stream"
     client = VideoStreamClient(server_url)
     client.start_stream()
+
+    send_init_pose()
 
     detector = Detector(
         weights="yolov8n.pt",
@@ -103,12 +105,18 @@ def main():
                 x_click, y_click = CLICK_PT  # 최근 마우스 클릭 좌표 복사
                 CLICK_PT = None  # 한 번 처리한 클릭 좌표는 초기화
                 if results.boxes.id is not None:
-                    xyxy = results.boxes.xyxy.cpu().numpy()  # 각 감지 박스의 [x1,y1,x2,y2]
+                    xyxy = (
+                        results.boxes.xyxy.cpu().numpy()
+                    )  # 각 감지 박스의 [x1,y1,x2,y2]
                     ids = results.boxes.id.int().cpu().numpy()  # 추적 ID 배열
-                    clss = results.boxes.cls.int().cpu().numpy()  # 클래스 인덱스 배열 (예: person=0)
+                    clss = (
+                        results.boxes.cls.int().cpu().numpy()
+                    )  # 클래스 인덱스 배열 (예: person=0)
                     best_id, best_d = None, 1e9  # 가장 가까운 박스 정보 초기값
                     for bb, tid, cls in zip(xyxy, ids, clss):
-                        if results.names[int(cls)] != "person":  # 사람 클래스만 대상으로 삼음
+                        if (
+                            results.names[int(cls)] != "person"
+                        ):  # 사람 클래스만 대상으로 삼음
                             continue
                         x1, y1, x2, y2 = map(int, bb)  # 박스 좌표 정수화
                         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2  # 박스 중심 계산
@@ -193,7 +201,7 @@ def main():
                 print("[RELEASE] clear target")
             if key == ord("q"):
                 break
-            
+
     finally:
         stop_event.set()
         t.join(timeout=1.0)
