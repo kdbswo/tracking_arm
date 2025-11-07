@@ -21,7 +21,7 @@ def on_mouse(event, x, y, flags, param):
 
 
 class PID:
-    def __init__(self, kp=0.003, ki=0.0, kd=0.0015):
+    def __init__(self, kp=0.01, ki=0.0, kd=0.0015):
         self.kp, self.ki, self.kd = kp, ki, kd
         self.ie = 0.0
         self.pe = 0.0
@@ -46,7 +46,7 @@ def main():
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, 0.0]
+    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, -45.0]
 
     detector = Detector(
         weights="yolov8n.pt",
