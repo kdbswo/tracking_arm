@@ -1,0 +1,10 @@
+Flask
+numpy
+opencv-python
+pymycobot
+requests
+rclpy
+setuptools
+std_msgs
+torch
+ultralytics
