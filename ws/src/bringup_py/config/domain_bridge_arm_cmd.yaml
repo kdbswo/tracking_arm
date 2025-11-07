@@ -1,94 +1,45 @@
-# Domain bridge configuration for relaying /arm/cmd between two DDS domains.
-# Update the domain IDs to match your robot and control PC environments.
+# bringup_py/config/domain_bridge_arm_cmd.yaml
+name: arm_domain_bridge
 
-# Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot31
-  from:
-    domain: 20
-    topic: /arm/cmd
+topics:
+  # PC(20) -> 로봇(21,31,32) : /arm/cmd
+  /arm/cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 31
-    topic: /arm/cmd
-
-# Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot32
-  from:
-    domain: 20
-    topic: /arm/cmd
+    from_domain: 20
+    to_domain: 21
+  /arm/cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 32
-    topic: /arm/cmd
-
-# Control PC domain -> Robot domain
-- name: arm_cmd_pc_to_robot21
-  from:
-    domain: 20
-    topic: /arm/cmd
+    from_domain: 20
+    to_domain: 31
+  /arm/cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 21
-    topic: /arm/cmd
+    from_domain: 20
+    to_domain: 32
 
-
-# pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc21
-  from:
-    domain: 21
-    topic: /arm/state
+  # 로봇(21,31,32) -> PC(20) : /arm/state
+  /arm/state:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 20
-    topic: /arm/state
-
-# pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc31
-  from:
-    domain: 31
-    topic: /arm/state
+    from_domain: 21
+    to_domain: 20
+  /arm/state:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 20
-    topic: /arm/state
-
-# pc -> arm 로봇 현재 각도
-- name: arm_state_robot_to_pc32
-  from:
-    domain: 32
-    topic: /arm/state
+    from_domain: 31
+    to_domain: 20
+  /arm/state:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 20
-    topic: /arm/state
+    from_domain: 32
+    to_domain: 20
 
-
-# pc -> pose 자세제어
-- name: arm_pose_pc_to_robot_arm31
-  from:
-    domain: 20
-    topic: /arm/pose_cmd
+  # PC(20) -> 로봇(21,31,32) : /arm/pose_cmd
+  /arm/pose_cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 31
-    topic: /arm/pose_cmd
-
-# pc -> pose 자세제어
-- name: arm_pose_pc_to_robot_arm32
-  from:
-    domain: 20
-    topic: /arm/pose_cmd
+    from_domain: 20
+    to_domain: 21
+  /arm/pose_cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 32
-    topic: /arm/pose_cmd
-
-# pc -> pose 자세제어
-- name: arm_pose_pc_to_robot_arm21
-  from:
-    domain: 20
-    topic: /arm/pose_cmd
+    from_domain: 20
+    to_domain: 31
+  /arm/pose_cmd:
     type: std_msgs/msg/Float32MultiArray
-  to:
-    domain: 21
-    topic: /arm/pose_cmd
+    from_domain: 20
+    to_domain: 32
