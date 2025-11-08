@@ -23,7 +23,9 @@ def on_mouse(event, x, y, flags, param):
         CLICK_PT = (x, y)
 
 
-def compute_normalized_error(tx: float, ty: float, cx_ref: float, cy_ref: float) -> tuple[float, float]:
+def compute_normalized_error(
+    tx: float, ty: float, cx_ref: float, cy_ref: float
+) -> tuple[float, float]:
     denom_x = cx_ref if cx_ref > 1e-3 else 1.0
     denom_y = cy_ref if cy_ref > 1e-3 else 1.0
     ex = (tx - cx_ref) / denom_x
@@ -143,6 +145,9 @@ def main():
                     thickness=2,
                 )
                 ex, ey = compute_normalized_error(tx, ty, cx_ref, cy_ref)
+                print(
+                    f"[카메라 중심과 박스의 오차] ex={ex:+.4f}, ey={ey:+.4f}, target=({tx},{ty}), center=({cx_ref:.1f},{cy_ref:.1f})"
+                )
                 send_cmd(ex, ey)
 
             cv2.putText(
