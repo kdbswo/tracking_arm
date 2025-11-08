@@ -49,3 +49,4 @@ def send_cmd(pan_cmd, tilt_cmd):
 
 def send_init_pose(pose_cmd):
     _arm_node.send_init_pose(pose_cmd)
+
