@@ -49,7 +49,9 @@ class ArmFollowerNode(Node):
         self.declare_parameter("flip_y", False)
         self.declare_parameter("coord_mode", 1)
 
-        self.declare_parameter("angle_refresh_sec", 1.5)
+        self.declare_parameter("angle_refresh_sec", 4.0)
+        self.declare_parameter("restore_orientation", True)
+        self.declare_parameter("orientation_tolerance_deg", 1.0)
 
         # Load parameters
         self.port = self.get_parameter("port").get_parameter_value().string_value
@@ -81,6 +83,10 @@ class ArmFollowerNode(Node):
         self.coord_mode = int(self.get_parameter("coord_mode").value)
 
         self.angle_refresh_sec = float(self.get_parameter("angle_refresh_sec").value)
+        self.restore_orientation = bool(self.get_parameter("restore_orientation").value)
+        self.orientation_tolerance_deg = float(
+            self.get_parameter("orientation_tolerance_deg").value
+        )
 
         if self.kp_x <= 0.0:
             self.kp_x = math.radians(self.fov_horizontal_deg / 2.0) * self.yaw_gain_alpha
@@ -93,6 +99,7 @@ class ArmFollowerNode(Node):
         # Robot connection and state
         self.mc: Optional[MyCobot] = None
         self.target_deg = [0.0] * 6
+        self._last_pose: Optional[list[float]] = None
         self._connect()
 
         # Command tracking
@@ -121,6 +128,9 @@ class ArmFollowerNode(Node):
             angles = self.mc.get_angles()
             if angles:
                 self.target_deg = [float(a) for a in angles]
+            pose = self._safe_get_coords()
+            if pose:
+                self._last_pose = pose[:]
         except Exception as exc:  # pragma: no cover - hardware specific
             self.mc = None
             self.get_logger().warn(f"MyCobot 연결 실패: {exc}")
@@ -179,15 +189,19 @@ class ArmFollowerNode(Node):
         if self.mc is None:
             return False
         delta_rad = self.kp_x * ex
-        delta_deg = clamp(math.degrees(delta_rad), -self.max_yaw_step_deg, self.max_yaw_step_deg)
+        delta_deg = clamp(
+            math.degrees(delta_rad), -self.max_yaw_step_deg, self.max_yaw_step_deg
+        )
         if abs(delta_deg) < 1e-3:
             return False
 
         current = self.target_deg[self.yaw_joint] + delta_deg
-        self.target_deg[self.yaw_joint] = clamp(current, self.yaw_min_deg, self.yaw_max_deg)
+        current = clamp(current, self.yaw_min_deg, self.yaw_max_deg)
+        self.target_deg[self.yaw_joint] = current
 
         try:
-            self.mc.send_angles(self.target_deg, self.speed)
+            yaw_joint_id = self.yaw_joint + 1  # pymycobot joints are 1-based
+            self.mc.send_angle(yaw_joint_id, current, self.speed)
             return True
         except Exception as exc:  # pragma: no cover
             self.get_logger().warn(f"Yaw command failed: {exc}")
@@ -200,22 +214,22 @@ class ArmFollowerNode(Node):
         if abs(delta_mm) < 1e-3:
             return False
 
-        try:
-            coords = self.mc.get_coords()
-        except Exception as exc:  # pragma: no cover
-            self.get_logger().warn(f"좌표 조회 실패: {exc}")
-            return False
-
+        coords = self._safe_get_coords()
         if not coords or len(coords) < 6:
             return False
 
-        new_axis = clamp(coords[self.axis_index] + delta_mm, self.axis_min_mm, self.axis_max_mm)
-        coords[self.axis_index] = new_axis
+        new_axis = clamp(
+            coords[self.axis_index] + delta_mm, self.axis_min_mm, self.axis_max_mm
+        )
+        axis_id = self.axis_index + 1  # pymycobot axis id is 1-based
+
         try:
-            self.mc.send_coords(coords, self.speed, self.coord_mode)
+            self.mc.send_coord(axis_id, new_axis, self.speed)
+            if self.restore_orientation:
+                self._restore_orientation(coords)
             return True
         except Exception as exc:  # pragma: no cover
-            self.get_logger().warn(f"Cartesian 명령 실패: {exc}")
+            self.get_logger().warn(f"Axis move failed: {exc}")
             return False
 
     def _maybe_refresh_angles(self, now) -> None:
@@ -230,6 +244,47 @@ class ArmFollowerNode(Node):
                 self._last_angle_refresh = now
         except Exception:
             pass
+
+    def _safe_get_coords(self) -> Optional[list[float]]:
+        if self.mc is None:
+            return None
+        try:
+            coords = self.mc.get_coords()
+        except Exception as exc:
+            self.get_logger().warn(f"좌표 조회 실패: {exc}")
+            return None
+        if coords:
+            self._last_pose = coords[:]
+        return coords
+
+    def _restore_orientation(self, reference_pose: list[float]) -> None:
+        if not self.restore_orientation or self.mc is None or not reference_pose:
+            return
+        try:
+            current = self.mc.get_coords()
+        except Exception:
+            return
+        if not current or len(current) < 6:
+            return
+
+        diffs = [
+            abs(current[3] - reference_pose[3]),
+            abs(current[4] - reference_pose[4]),
+            abs(current[5] - reference_pose[5]),
+        ]
+        if max(diffs) < self.orientation_tolerance_deg:
+            self._last_pose = current[:]
+            return
+
+        target = current[:]
+        target[3] = reference_pose[3]
+        target[4] = reference_pose[4]
+        target[5] = reference_pose[5]
+        try:
+            self.mc.send_coords(target, self.speed, self.coord_mode)
+            self._last_pose = target
+        except Exception as exc:
+            self.get_logger().warn(f"Orientation restore failed: {exc}")
 
     def _publish_state(self) -> None:
         if self.mc is None:
