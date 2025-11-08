@@ -14,7 +14,7 @@ def generate_launch_description():
     )
 
     app_process = ExecuteProcess(
-        cmd=["python3", "-m", "object_tracker_py.app"],
+        cmd=["python3", "-m", "object_tracker_py.angle_publisher"],
         output="screen",
     )
 

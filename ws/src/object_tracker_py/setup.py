@@ -30,9 +30,9 @@ setup(
     entry_points={
         "console_scripts": [
             "pc_tracker_app = object_tracker_py.app:main",
+            "angle_cmd_publisher = object_tracker_py.angle_publisher:main",
             "flask_webcam_server = object_tracker_py.flask_webcam_server:main",
             "flask_webcam_client = object_tracker_py.flask_webcam_client:main",
-            "udp_receiver = object_tracker_py.udp_receiver:main",
         ]
     },
 )
