@@ -37,6 +37,7 @@ class ArmFollowerNode(Node):
         self.declare_parameter("max_yaw_step_deg", 2.0)
         self.declare_parameter("deadband", 0.03)
         self.declare_parameter("flip_x", False)
+        self.declare_parameter("yaw_sign", 1)
 
         # Vertical (Option A: Cartesian axis) config
         self.declare_parameter("enable_vertical", True)
@@ -69,6 +70,7 @@ class ArmFollowerNode(Node):
         self.max_yaw_step_deg = float(self.get_parameter("max_yaw_step_deg").value)
         self.deadband = float(self.get_parameter("deadband").value)
         self.flip_x = bool(self.get_parameter("flip_x").value)
+        self.yaw_sign = int(self.get_parameter("yaw_sign").value) or 1
 
         self.enable_vertical = bool(self.get_parameter("enable_vertical").value)
         self.cartesian_axis = (
@@ -117,7 +119,10 @@ class ArmFollowerNode(Node):
         self.state_pub = self.create_publisher(Float32MultiArray, "/arm/state", 10)
 
         self.timer = self.create_timer(1.0 / self.control_hz, self._control_step)
-        self.get_logger().info("✅ ArmFollowerNode ready (Option A yaw+Z control)")
+        self.get_logger().info(
+            f"✅ ArmFollowerNode ready (Option A yaw+Z control) "
+            f"[flip_x={self.flip_x}, yaw_sign={self.yaw_sign}, yaw_joint={self.yaw_joint + 1}]"
+        )
 
     def _connect(self) -> None:
         if self.mc is not None:
@@ -188,7 +193,7 @@ class ArmFollowerNode(Node):
     def _apply_yaw(self, ex: float) -> bool:
         if self.mc is None:
             return False
-        delta_rad = self.kp_x * ex
+        delta_rad = self.yaw_sign * self.kp_x * ex
         delta_deg = clamp(
             math.degrees(delta_rad), -self.max_yaw_step_deg, self.max_yaw_step_deg
         )
