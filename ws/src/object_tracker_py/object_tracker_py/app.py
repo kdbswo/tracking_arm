@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - allow running as loose script
 
 TARGET_ID = None
 CLICK_PT = None
+_CENTER_STATE = False
 
 
 def on_mouse(event, x, y, flags, param):
@@ -28,7 +29,7 @@ def plan_control_command(
 ) -> tuple[float, float] | None:
     """
     화면 중심 대비 타겟 위치를 -1.0~1.0 범위로 정규화해 좌우 명령을 만든다.
-    중앙 구간(abs(ex) <= 0.2)에서는 0을 보내어 정지시킨다.
+    중앙 구간에서는 히스테리시스(안쪽 0.2, 바깥 0.25)를 적용해 흔들림을 줄인다.
 
     Returns: (ex, 0) where ex<0=왼쪽, ex>0=오른쪽. None if inputs invalid.
     """
@@ -44,9 +45,19 @@ def plan_control_command(
     ex = (tx - cx) / cx
     ex = max(-1.0, min(1.0, ex))
 
-    # 중앙 구간이면 정지 명령(0) 전송
-    if abs(ex) <= 0.2:
-        ex = 0.0
+    # 중앙 구간 히스테리시스: 안쪽 0.1로 진입, 바깥 0.15로 해제
+    global _CENTER_STATE
+    enter_th = 0.1
+    exit_th = 0.15
+    if _CENTER_STATE:
+        if abs(ex) <= exit_th:
+            ex = 0.0
+        else:
+            _CENTER_STATE = False
+    else:
+        if abs(ex) <= enter_th:
+            _CENTER_STATE = True
+            ex = 0.0
 
     return (ex, 0.0)
 
@@ -67,7 +78,7 @@ def main():
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, -45.0]
+    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, 0.0]
 
     detector = Detector(
         weights="yolov8n.pt",
@@ -171,7 +182,11 @@ def main():
                     thickness=2,
                 )
                 command = plan_control_command(target_center, (cx_ref, cy_ref))
-                dispatch_control_command(command)
+                if command is not None:
+                    dispatch_control_command(command)
+            else:
+                # 타깃이 사라졌으면 즉시 정지 명령 전송
+                dispatch_control_command((0.0, 0.0))
 
             cv2.putText(
                 display,
