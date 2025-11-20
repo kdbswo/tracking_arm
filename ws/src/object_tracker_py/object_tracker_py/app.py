@@ -23,14 +23,40 @@ def on_mouse(event, x, y, flags, param):
         CLICK_PT = (x, y)
 
 
-def compute_normalized_error(
-    tx: float, ty: float, cx_ref: float, cy_ref: float
-) -> tuple[float, float]:
-    denom_x = cx_ref if cx_ref > 1e-3 else 1.0
-    denom_y = cy_ref if cy_ref > 1e-3 else 1.0
-    ex = (tx - cx_ref) / denom_x
-    ey = (ty - cy_ref) / denom_y
-    return float(ex), float(ey)
+def plan_control_command(
+    target_center: tuple[float, float], frame_center: tuple[float, float]
+) -> tuple[float, float] | None:
+    """
+    화면 중심 대비 타겟 위치를 -1.0~1.0 범위로 정규화해 좌우 명령을 만든다.
+    중앙 구간(abs(ex) <= 0.2)에서는 0을 보내어 정지시킨다.
+
+    Returns: (ex, 0) where ex<0=왼쪽, ex>0=오른쪽. None if inputs invalid.
+    """
+    if not target_center or not frame_center:
+        return None
+
+    tx, _ty = target_center
+    cx, _cy = frame_center
+    if cx == 0:  # 안전 가드
+        return None
+
+    # 화면 가로 중심을 0으로, 좌 -1.0, 우 +1.0으로 정규화
+    ex = (tx - cx) / cx
+    ex = max(-1.0, min(1.0, ex))
+
+    # 중앙 구간이면 정지 명령(0) 전송
+    if abs(ex) <= 0.2:
+        ex = 0.0
+
+    return (ex, 0.0)
+
+
+def dispatch_control_command(command: tuple[float, float] | None) -> None:
+    """Placeholder hook that will eventually deliver commands to the arm."""
+    if not command:
+        return
+    pan_cmd, tilt_cmd = command
+    send_cmd(pan_cmd, tilt_cmd)
 
 
 def main():
@@ -144,11 +170,8 @@ def main():
                     markerType=cv2.MARKER_CROSS,
                     thickness=2,
                 )
-                ex, ey = compute_normalized_error(tx, ty, cx_ref, cy_ref)
-                print(
-                    f"[카메라 중심과 박스의 오차] ex={ex:+.4f}, ey={ey:+.4f}, target=({tx},{ty}), center=({cx_ref:.1f},{cy_ref:.1f})"
-                )
-                send_cmd(ex, ey)
+                command = plan_control_command(target_center, (cx_ref, cy_ref))
+                dispatch_control_command(command)
 
             cv2.putText(
                 display,
