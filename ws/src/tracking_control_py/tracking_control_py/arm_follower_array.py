@@ -104,8 +104,6 @@ class ArmFollowerNode(Node):
         self._last_state_pub_time = None
         self._yaw_jog_dir = 0  # -1, 0, +1 (velocity jog state)
         self._yaw_last_active = self.get_clock().now()
-        self._last_cmd_log = 0.0
-        self._last_stop_log = 0.0
 
         # ROS interfaces
         self.create_subscription(Float32MultiArray, "/arm/cmd", self.cmd_callback, 10)
@@ -140,10 +138,7 @@ class ArmFollowerNode(Node):
         self.last_ex = float(msg.data[0])
         self._target_active = True
         self._last_cmd_time = self.get_clock().now()
-        now = time.monotonic()
-        if now - self._last_cmd_log > 0.5:
-            self._last_cmd_log = now
-            self.get_logger().info(f"/arm/cmd 수신 ex={self.last_ex:+.3f}")
+        self.get_logger().info(f"/arm/cmd 수신 ex={self.last_ex:+.3f}")
 
     def pose_cmd_callback(self, msg: Float32MultiArray) -> None:
         if self.mc is None:
@@ -169,10 +164,7 @@ class ArmFollowerNode(Node):
             self._target_active = False
             if self.yaw_control_mode == "velocity":
                 self._yaw_stop()
-                now_wall = time.monotonic()
-                if now_wall - self._last_stop_log > 0.5:
-                    self._last_stop_log = now_wall
-                    self.get_logger().info("타임아웃으로 yaw 정지")
+                self.get_logger().info("타임아웃으로 yaw 정지")
             self._publish_state()
             return
 
@@ -224,10 +216,7 @@ class ArmFollowerNode(Node):
             elapsed_ms = (now - self._yaw_last_active).nanoseconds * 1e-6
             if self._yaw_jog_dir != 0 and elapsed_ms > self.yaw_stick_ms:
                 self._yaw_stop()
-                now_wall = time.monotonic()
-                if now_wall - self._last_stop_log > 0.5:
-                    self._last_stop_log = now_wall
-                    self.get_logger().info("데드밴드로 yaw 정지")
+                self.get_logger().info("데드밴드로 yaw 정지")
             return False
 
         self._yaw_last_active = now
@@ -289,10 +278,7 @@ class ArmFollowerNode(Node):
             self.get_logger().warn(f"Yaw jog stop failed: {exc}")
         finally:
             self._yaw_jog_dir = 0
-            now = time.monotonic()
-            if now - self._last_stop_log > 0.5:
-                self._last_stop_log = now
-                self.get_logger().info("Yaw 정지 완료")
+            self.get_logger().info("Yaw 정지 완료")
 
     def _maybe_refresh_angles(self, now) -> None:
         if (now - self._last_angle_refresh).nanoseconds * 1e-9 < self.angle_refresh_sec:
