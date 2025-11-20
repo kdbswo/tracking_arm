@@ -39,9 +39,10 @@ class ArmFollowerNode(Node):
         self.declare_parameter("flip_x", True)
         self.declare_parameter("yaw_sign", 1)
         self.declare_parameter("yaw_control_mode", "velocity")  # "position" or "velocity"
-        self.declare_parameter("yaw_vel_k", 60.0)
-        self.declare_parameter("yaw_vel_min", 10)
-        self.declare_parameter("yaw_vel_max", 100)
+        # 기본 속도 게인을 낮춰 보다 부드럽게 회전
+        self.declare_parameter("yaw_vel_k", 30.0)
+        self.declare_parameter("yaw_vel_min", 5)
+        self.declare_parameter("yaw_vel_max", 80)
         self.declare_parameter("yaw_deadband", 0.03)
         self.declare_parameter("yaw_stick_ms", 120)
         self.declare_parameter("yaw_dir_pos", 0)
