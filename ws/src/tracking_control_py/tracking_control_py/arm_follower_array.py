@@ -45,7 +45,7 @@ class ArmFollowerNode(Node):
         # 속도 제어: 오차와 무관하게 일정 속도로 조그
         self.declare_parameter("yaw_vel_const", 10.0)
         self.declare_parameter("yaw_deadband", 0.03)
-        self.declare_parameter("yaw_stick_ms", 120)
+        self.declare_parameter("yaw_stick_ms", 0)
         self.declare_parameter("yaw_dir_pos", 0)
         self.declare_parameter("yaw_dir_neg", 1)
 
@@ -213,10 +213,10 @@ class ArmFollowerNode(Node):
         now = self.get_clock().now()
 
         if abs(signed_ex) <= self.yaw_deadband:
-            elapsed_ms = (now - self._yaw_last_active).nanoseconds * 1e-6
-            if self._yaw_jog_dir != 0 and elapsed_ms > self.yaw_stick_ms:
+            # 즉시 정지: 데드밴드 안쪽이면 바로 jog_stop 호출
+            if self._yaw_jog_dir != 0:
                 self._yaw_stop()
-                self.get_logger().info("데드밴드로 yaw 정지")
+                self.get_logger().info("데드밴드로 yaw 정지(즉시)")
             return False
 
         self._yaw_last_active = now
