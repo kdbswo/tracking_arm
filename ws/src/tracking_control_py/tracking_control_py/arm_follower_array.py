@@ -25,7 +25,7 @@ class ArmFollowerNode(Node):
         self.declare_parameter("baud", 1_000_000)
         self.declare_parameter("speed", 40)
         self.declare_parameter("control_hz", 15.0)
-        self.declare_parameter("target_timeout", 0.6)
+        self.declare_parameter("target_timeout", 0.1)
 
         # Horizontal yaw (joint 5) config
         self.declare_parameter("yaw_joint", 4)
@@ -38,11 +38,13 @@ class ArmFollowerNode(Node):
         self.declare_parameter("deadband", 0.03)
         self.declare_parameter("flip_x", True)
         self.declare_parameter("yaw_sign", 1)
-        self.declare_parameter("yaw_control_mode", "velocity")  # "position" or "velocity"
+        self.declare_parameter(
+            "yaw_control_mode", "velocity"
+        )  # "position" or "velocity"
         # 기본 속도 게인을 낮춰 보다 부드럽게 회전
-        self.declare_parameter("yaw_vel_k", 30.0)
+        self.declare_parameter("yaw_vel_k", 5.0)
         self.declare_parameter("yaw_vel_min", 5)
-        self.declare_parameter("yaw_vel_max", 80)
+        self.declare_parameter("yaw_vel_max", 50)
         self.declare_parameter("yaw_deadband", 0.03)
         self.declare_parameter("yaw_stick_ms", 120)
         self.declare_parameter("yaw_dir_pos", 0)
@@ -85,7 +87,9 @@ class ArmFollowerNode(Node):
         self.state_publish_sec = float(self.get_parameter("state_publish_sec").value)
 
         if self.kp_x <= 0.0:
-            self.kp_x = math.radians(self.fov_horizontal_deg / 2.0) * self.yaw_gain_alpha
+            self.kp_x = (
+                math.radians(self.fov_horizontal_deg / 2.0) * self.yaw_gain_alpha
+            )
             self.get_logger().info(
                 f"Auto kp_x set to {self.kp_x:.3f} rad/e (FOV={self.fov_horizontal_deg}°, alpha={self.yaw_gain_alpha})"
             )
