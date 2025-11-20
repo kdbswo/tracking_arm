@@ -36,7 +36,7 @@ class ArmFollowerNode(Node):
         self.declare_parameter("yaw_gain_alpha", 0.6)
         self.declare_parameter("max_yaw_step_deg", 2.0)
         self.declare_parameter("deadband", 0.03)
-        self.declare_parameter("flip_x", False)
+        self.declare_parameter("flip_x", True)
         self.declare_parameter("yaw_sign", 1)
         self.declare_parameter("yaw_control_mode", "velocity")  # "position" or "velocity"
         self.declare_parameter("yaw_vel_k", 60.0)
@@ -48,6 +48,7 @@ class ArmFollowerNode(Node):
         self.declare_parameter("yaw_dir_neg", 1)
 
         self.declare_parameter("angle_refresh_sec", 4.0)
+        self.declare_parameter("state_publish_sec", 2.0)
 
         # Load parameters
         self.port = self.get_parameter("port").get_parameter_value().string_value
@@ -80,6 +81,7 @@ class ArmFollowerNode(Node):
         self.yaw_dir_neg = int(self.get_parameter("yaw_dir_neg").value)
 
         self.angle_refresh_sec = float(self.get_parameter("angle_refresh_sec").value)
+        self.state_publish_sec = float(self.get_parameter("state_publish_sec").value)
 
         if self.kp_x <= 0.0:
             self.kp_x = math.radians(self.fov_horizontal_deg / 2.0) * self.yaw_gain_alpha
@@ -97,6 +99,7 @@ class ArmFollowerNode(Node):
         self._target_active = False
         self._last_cmd_time = self.get_clock().now()
         self._last_angle_refresh = self.get_clock().now()
+        self._last_state_pub_time = None
         self._yaw_jog_dir = 0  # -1, 0, +1 (velocity jog state)
         self._yaw_last_active = self.get_clock().now()
 
@@ -286,6 +289,11 @@ class ArmFollowerNode(Node):
     def _publish_state(self) -> None:
         if self.mc is None:
             return
+        now = self.get_clock().now()
+        if self._last_state_pub_time is not None:
+            age = (now - self._last_state_pub_time).nanoseconds * 1e-9
+            if age < self.state_publish_sec:
+                return
         try:
             current_deg = self.mc.get_angles()
         except Exception as exc:
@@ -296,6 +304,7 @@ class ArmFollowerNode(Node):
         msg = Float32MultiArray()
         msg.data = [float(angle) for angle in current_deg]
         self.state_pub.publish(msg)
+        self._last_state_pub_time = now
 
 
 def main():
