@@ -69,6 +69,7 @@ def main():
     cv2.setMouseCallback("FOLLOW PERSON", on_mouse)
 
     last_sent_target = False
+    last_send_ts = 0.0
 
     try:
         while True:
@@ -141,13 +142,20 @@ def main():
                     markerType=cv2.MARKER_CROSS,
                     thickness=2,
                 )
-                send_target_px(target_center, frame.shape)
-                last_sent_target = True
+                now_ts = time.monotonic()
+                should_send = (not last_sent_target) or (
+                    now_ts - last_send_ts >= 1.0
+                )
+                if should_send:
+                    send_target_px(target_center, frame.shape)
+                    last_sent_target = True
+                    last_send_ts = now_ts
             else:
                 # 타깃이 사라졌으면 한 번만 알림 보내고 로봇 쪽의 타임아웃 로직을 활용
                 if last_sent_target:
                     send_target_px(None, None)
                     last_sent_target = False
+                    last_send_ts = time.monotonic()
 
             cv2.putText(
                 display,
