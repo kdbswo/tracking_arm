@@ -29,7 +29,7 @@ def plan_control_command(
 ) -> tuple[float, float] | None:
     """
     화면 중심 대비 타겟 위치를 -1.0~1.0 범위로 정규화해 좌우 명령을 만든다.
-    중앙 구간에서는 히스테리시스(안쪽 0.2, 바깥 0.25)를 적용해 흔들림을 줄인다.
+    중앙 구간에서는 히스테리시스(안쪽 0.1, 바깥 0.15)를 적용해 흔들림을 줄인다.
 
     Returns: (ex, 0) where ex<0=왼쪽, ex>0=오른쪽. None if inputs invalid.
     """
@@ -78,7 +78,7 @@ def main():
     client = VideoStreamClient(server_url)
     client.start_stream()
 
-    pose_cmd = [0.0, 0.0, 0.0, 0.0, 90.0, 0.0]
+    pose_cmd = [0.0, 0.0, 0.0, 0.0, 45.0, 0.0]
 
     detector = Detector(
         weights="yolov8n.pt",

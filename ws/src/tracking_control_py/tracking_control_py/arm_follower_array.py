@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from typing import Optional
+import time
 
 import rclpy
 from pymycobot import MyCobot
@@ -41,10 +42,8 @@ class ArmFollowerNode(Node):
         self.declare_parameter(
             "yaw_control_mode", "velocity"
         )  # "position" or "velocity"
-        # 기본 속도 게인을 더 낮춰 매우 느리게 회전
-        self.declare_parameter("yaw_vel_k", 2.0)
-        self.declare_parameter("yaw_vel_min", 1)
-        self.declare_parameter("yaw_vel_max", 20)
+        # 속도 제어: 오차와 무관하게 일정 속도로 조그
+        self.declare_parameter("yaw_vel_const", 10.0)
         self.declare_parameter("yaw_deadband", 0.03)
         self.declare_parameter("yaw_stick_ms", 120)
         self.declare_parameter("yaw_dir_pos", 0)
@@ -75,9 +74,7 @@ class ArmFollowerNode(Node):
             .get_parameter_value()
             .string_value.lower()
         )
-        self.yaw_vel_k = float(self.get_parameter("yaw_vel_k").value)
-        self.yaw_vel_min = int(self.get_parameter("yaw_vel_min").value)
-        self.yaw_vel_max = int(self.get_parameter("yaw_vel_max").value)
+        self.yaw_vel_const = float(self.get_parameter("yaw_vel_const").value)
         self.yaw_deadband = float(self.get_parameter("yaw_deadband").value)
         self.yaw_stick_ms = int(self.get_parameter("yaw_stick_ms").value)
         self.yaw_dir_pos = int(self.get_parameter("yaw_dir_pos").value)
@@ -107,6 +104,8 @@ class ArmFollowerNode(Node):
         self._last_state_pub_time = None
         self._yaw_jog_dir = 0  # -1, 0, +1 (velocity jog state)
         self._yaw_last_active = self.get_clock().now()
+        self._last_cmd_log = 0.0
+        self._last_stop_log = 0.0
 
         # ROS interfaces
         self.create_subscription(Float32MultiArray, "/arm/cmd", self.cmd_callback, 10)
@@ -141,6 +140,10 @@ class ArmFollowerNode(Node):
         self.last_ex = float(msg.data[0])
         self._target_active = True
         self._last_cmd_time = self.get_clock().now()
+        now = time.monotonic()
+        if now - self._last_cmd_log > 0.5:
+            self._last_cmd_log = now
+            self.get_logger().info(f"/arm/cmd 수신 ex={self.last_ex:+.3f}")
 
     def pose_cmd_callback(self, msg: Float32MultiArray) -> None:
         if self.mc is None:
@@ -166,6 +169,10 @@ class ArmFollowerNode(Node):
             self._target_active = False
             if self.yaw_control_mode == "velocity":
                 self._yaw_stop()
+                now_wall = time.monotonic()
+                if now_wall - self._last_stop_log > 0.5:
+                    self._last_stop_log = now_wall
+                    self.get_logger().info("타임아웃으로 yaw 정지")
             self._publish_state()
             return
 
@@ -211,19 +218,22 @@ class ArmFollowerNode(Node):
             return False
 
         signed_ex = self.yaw_sign * ex
-        mag = abs(signed_ex)
         now = self.get_clock().now()
 
-        if mag <= self.yaw_deadband:
+        if abs(signed_ex) <= self.yaw_deadband:
             elapsed_ms = (now - self._yaw_last_active).nanoseconds * 1e-6
             if self._yaw_jog_dir != 0 and elapsed_ms > self.yaw_stick_ms:
                 self._yaw_stop()
+                now_wall = time.monotonic()
+                if now_wall - self._last_stop_log > 0.5:
+                    self._last_stop_log = now_wall
+                    self.get_logger().info("데드밴드로 yaw 정지")
             return False
 
         self._yaw_last_active = now
 
-        spd = int(self.yaw_vel_k * mag)
-        spd = max(self.yaw_vel_min, min(self.yaw_vel_max, spd))
+        # 오차 크기와 무관하게 일정 속도로 구동
+        spd = int(self.yaw_vel_const)
         direction = 1 if signed_ex > 0 else -1
 
         if direction != self._yaw_jog_dir:
@@ -253,6 +263,8 @@ class ArmFollowerNode(Node):
         except Exception as exc:
             self.get_logger().warn(f"Yaw jog start failed: {exc}")
             self._yaw_jog_dir = 0
+        else:
+            self.get_logger().info(f"Yaw 시작 dir={direction:+d} speed={speed}")
 
     def _yaw_speed(self, speed: int) -> None:
         if self.mc is None or self._yaw_jog_dir == 0:
@@ -277,6 +289,10 @@ class ArmFollowerNode(Node):
             self.get_logger().warn(f"Yaw jog stop failed: {exc}")
         finally:
             self._yaw_jog_dir = 0
+            now = time.monotonic()
+            if now - self._last_stop_log > 0.5:
+                self._last_stop_log = now
+                self.get_logger().info("Yaw 정지 완료")
 
     def _maybe_refresh_angles(self, now) -> None:
         if (now - self._last_angle_refresh).nanoseconds * 1e-9 < self.angle_refresh_sec:
