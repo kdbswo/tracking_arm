@@ -43,3 +43,17 @@ topics:
     type: std_msgs/msg/Float32MultiArray
     from_domain: 20
     to_domain: 32
+
+  # PC(20) -> 로봇(21,31,32) : /arm/target_px (cx, cy, w, h)
+  /arm/target_px:
+    type: std_msgs/msg/Float32MultiArray
+    from_domain: 20
+    to_domain: 21
+  /arm/target_px:
+    type: std_msgs/msg/Float32MultiArray
+    from_domain: 20
+    to_domain: 31
+  /arm/target_px:
+    type: std_msgs/msg/Float32MultiArray
+    from_domain: 20
+    to_domain: 32

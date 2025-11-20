@@ -7,67 +7,25 @@ import cv2
 try:
     from .flask_webcam_client import VideoStreamClient, resolve_stream_url
     from .detector import Detector
-    from .arm_cmd_node import init_ros2, send_cmd, send_init_pose, spin_once
+    from .arm_cmd_node import (
+        init_ros2,
+        send_init_pose,
+        send_target_px,
+        spin_once,
+    )
 except ImportError:  # pragma: no cover - allow running as loose script
     from flask_webcam_client import VideoStreamClient, resolve_stream_url
     from detector import Detector
-    from arm_cmd_node import init_ros2, send_cmd, send_init_pose, spin_once
+    from arm_cmd_node import init_ros2, send_init_pose, send_target_px, spin_once
 
 TARGET_ID = None
 CLICK_PT = None
-_CENTER_STATE = False
 
 
 def on_mouse(event, x, y, flags, param):
     global CLICK_PT
     if event == cv2.EVENT_LBUTTONDOWN:
         CLICK_PT = (x, y)
-
-
-def plan_control_command(
-    target_center: tuple[float, float], frame_center: tuple[float, float]
-) -> tuple[float, float] | None:
-    """
-    화면 중심 대비 타겟 위치를 -1.0~1.0 범위로 정규화해 좌우 명령을 만든다.
-    중앙 구간에서는 히스테리시스(안쪽 0.1, 바깥 0.15)를 적용해 흔들림을 줄인다.
-
-    Returns: (ex, 0) where ex<0=왼쪽, ex>0=오른쪽. None if inputs invalid.
-    """
-    if not target_center or not frame_center:
-        return None
-
-    tx, _ty = target_center
-    cx, _cy = frame_center
-    if cx == 0:  # 안전 가드
-        return None
-
-    # 화면 가로 중심을 0으로, 좌 -1.0, 우 +1.0으로 정규화
-    ex = (tx - cx) / cx
-    ex = max(-1.0, min(1.0, ex))
-
-    # 중앙 구간 히스테리시스: 안쪽 0.1로 진입, 바깥 0.15로 해제
-    global _CENTER_STATE
-    enter_th = 0.1
-    exit_th = 0.15
-    if _CENTER_STATE:
-        if abs(ex) <= exit_th:
-            ex = 0.0
-        else:
-            _CENTER_STATE = False
-    else:
-        if abs(ex) <= enter_th:
-            _CENTER_STATE = True
-            ex = 0.0
-
-    return (ex, 0.0)
-
-
-def dispatch_control_command(command: tuple[float, float] | None) -> None:
-    """Placeholder hook that will eventually deliver commands to the arm."""
-    if not command:
-        return
-    pan_cmd, tilt_cmd = command
-    send_cmd(pan_cmd, tilt_cmd)
 
 
 def main():
@@ -109,6 +67,8 @@ def main():
 
     cv2.namedWindow("FOLLOW PERSON")
     cv2.setMouseCallback("FOLLOW PERSON", on_mouse)
+
+    last_sent_target = False
 
     try:
         while True:
@@ -181,12 +141,13 @@ def main():
                     markerType=cv2.MARKER_CROSS,
                     thickness=2,
                 )
-                command = plan_control_command(target_center, (cx_ref, cy_ref))
-                if command is not None:
-                    dispatch_control_command(command)
+                send_target_px(target_center, frame.shape)
+                last_sent_target = True
             else:
-                # 타깃이 사라졌으면 즉시 정지 명령 전송
-                dispatch_control_command((0.0, 0.0))
+                # 타깃이 사라졌으면 한 번만 알림 보내고 로봇 쪽의 타임아웃 로직을 활용
+                if last_sent_target:
+                    send_target_px(None, None)
+                    last_sent_target = False
 
             cv2.putText(
                 display,

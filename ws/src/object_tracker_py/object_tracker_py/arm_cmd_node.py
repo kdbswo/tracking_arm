@@ -8,6 +8,9 @@ class ArmCmdPub(Node):
         super().__init__("arm_cmd_pub")
         self.cmd_pub = self.create_publisher(Float32MultiArray, "/arm/cmd", 10)
         self.pose_pub = self.create_publisher(Float32MultiArray, "/arm/pose_cmd", 10)
+        self.target_px_pub = self.create_publisher(
+            Float32MultiArray, "/arm/target_px", 10
+        )
         self.create_subscription(
             Float32MultiArray, "/arm/state", self._state_callback, 10
         )
@@ -25,6 +28,25 @@ class ArmCmdPub(Node):
         msg.data = pose_cmd
         self.pose_pub.publish(msg)
         self.get_logger().info(f"pose 자세 설정:{msg.data}")
+
+    def send_target_px(self, center_px, frame_shape):
+        """
+        Publish target pixel (cx, cy) plus frame width/height to /arm/target_px.
+
+        center_px: (x, y) tuple in pixel coordinates or None to clear target.
+        frame_shape: frame.shape so we can extract width/height.
+        """
+        msg = Float32MultiArray()
+        if center_px is not None and frame_shape is not None:
+            h, w = frame_shape[:2]
+            cx, cy = center_px
+            msg.data = [float(cx), float(cy), float(w), float(h)]
+            self.target_px_pub.publish(msg)
+            self.get_logger().debug(f"/arm/target_px 전송: {msg.data}")
+        else:
+            msg.data = []  # signal target lost/cleared
+            self.target_px_pub.publish(msg)
+            self.get_logger().info("/arm/target_px 타겟 해제 전송")
 
     def _state_callback(self, msg):
         self.get_logger().info(f"현재 팔 각도: {msg.data}")
@@ -50,3 +72,6 @@ def send_cmd(pan_cmd, tilt_cmd):
 def send_init_pose(pose_cmd):
     _arm_node.send_init_pose(pose_cmd)
 
+
+def send_target_px(center_px, frame_shape):
+    _arm_node.send_target_px(center_px, frame_shape)

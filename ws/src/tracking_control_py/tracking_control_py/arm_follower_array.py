@@ -27,6 +27,8 @@ class ArmFollowerNode(Node):
         self.declare_parameter("speed", 40)
         self.declare_parameter("control_hz", 15.0)
         self.declare_parameter("target_timeout", 0.1)
+        self.declare_parameter("center_enter_th", 0.1)
+        self.declare_parameter("center_exit_th", 0.15)
 
         # Horizontal yaw (joint 5) config
         self.declare_parameter("yaw_joint", 4)
@@ -58,6 +60,8 @@ class ArmFollowerNode(Node):
         self.speed = int(self.get_parameter("speed").value)
         self.control_hz = max(1.0, float(self.get_parameter("control_hz").value))
         self.target_timeout = float(self.get_parameter("target_timeout").value)
+        self.center_enter_th = float(self.get_parameter("center_enter_th").value)
+        self.center_exit_th = float(self.get_parameter("center_exit_th").value)
 
         self.yaw_joint = int(self.get_parameter("yaw_joint").value)
         self.yaw_min_deg = float(self.get_parameter("yaw_min_deg").value)
@@ -98,15 +102,23 @@ class ArmFollowerNode(Node):
 
         # Command tracking
         self.last_ex = 0.0
+        self._target_px = None
+        self._frame_center = None
+        self._center_state = False
         self._target_active = False
-        self._last_cmd_time = self.get_clock().now()
+        self._last_cmd_time = None
+        self._last_px_time = None
         self._last_angle_refresh = self.get_clock().now()
         self._last_state_pub_time = None
         self._yaw_jog_dir = 0  # -1, 0, +1 (velocity jog state)
         self._yaw_last_active = self.get_clock().now()
+        self._last_target_log_sec = 0.0
 
         # ROS interfaces
         self.create_subscription(Float32MultiArray, "/arm/cmd", self.cmd_callback, 10)
+        self.create_subscription(
+            Float32MultiArray, "/arm/target_px", self.target_px_callback, 10
+        )
         self.pose_sub = self.create_subscription(
             Float32MultiArray, "/arm/pose_cmd", self.pose_cmd_callback, 10
         )
@@ -140,6 +152,36 @@ class ArmFollowerNode(Node):
         self._last_cmd_time = self.get_clock().now()
         self.get_logger().info(f"/arm/cmd 수신 ex={self.last_ex:+.3f}")
 
+    def target_px_callback(self, msg: Float32MultiArray) -> None:
+        now = self.get_clock().now()
+        if len(msg.data) < 4:
+            # 명시적으로 타겟 해제
+            self._target_px = None
+            self._frame_center = None
+            self._center_state = False
+            self._target_active = False
+            self._last_px_time = now
+            if self.yaw_control_mode == "velocity":
+                self._yaw_stop()
+            self.get_logger().info("/arm/target_px 해제 수신 -> 정지")
+            return
+
+        cx, cy, w, h = [float(v) for v in msg.data[:4]]
+        if w <= 0.0 or h <= 0.0:
+            self.get_logger().warn("/arm/target_px 데이터가 잘못됨 (w/h<=0)")
+            return
+        self._target_px = (cx, cy)
+        self._frame_center = (w / 2.0, h / 2.0)
+        self._target_active = True
+        self._last_px_time = now
+        self._center_state = False
+        now_sec = now.nanoseconds * 1e-9
+        if now_sec - self._last_target_log_sec > 1.0:
+            self.get_logger().info(
+                f"/arm/target_px 수신: cx={cx:.1f}, cy={cy:.1f}, w={w:.0f}, h={h:.0f}"
+            )
+            self._last_target_log_sec = now_sec
+
     def pose_cmd_callback(self, msg: Float32MultiArray) -> None:
         if self.mc is None:
             return
@@ -159,16 +201,27 @@ class ArmFollowerNode(Node):
             return
 
         now = self.get_clock().now()
-        age = (now - self._last_cmd_time).nanoseconds * 1e-9
-        if not self._target_active or age > self.target_timeout:
+        ex = None
+
+        if self._last_px_time is not None:
+            age_px = (now - self._last_px_time).nanoseconds * 1e-9
+            if age_px <= self.target_timeout:
+                ex = self._calc_ex_from_px()
+
+        if ex is None and self._last_cmd_time is not None:
+            age_cmd = (now - self._last_cmd_time).nanoseconds * 1e-9
+            if self._target_active and age_cmd <= self.target_timeout:
+                ex = -self.last_ex if self.flip_x else self.last_ex
+
+        if ex is None:
             self._target_active = False
             if self.yaw_control_mode == "velocity":
                 self._yaw_stop()
-                self.get_logger().info("타임아웃으로 yaw 정지")
+                self.get_logger().info("타임아웃/타겟 없음으로 yaw 정지")
             self._publish_state()
             return
 
-        ex = -self.last_ex if self.flip_x else self.last_ex
+        self._target_active = True
 
         moved = False
 
@@ -181,6 +234,28 @@ class ArmFollowerNode(Node):
             self._maybe_refresh_angles(now)
 
         self._publish_state()
+
+    def _calc_ex_from_px(self) -> Optional[float]:
+        """Convert target pixel + frame center into normalized ex with hysteresis."""
+        if self._target_px is None or self._frame_center is None:
+            return None
+        tx, _ty = self._target_px
+        cx, _cy = self._frame_center
+        if cx == 0.0:
+            return None
+        ex = clamp((tx - cx) / cx, -1.0, 1.0)
+
+        if self._center_state:
+            if abs(ex) <= self.center_exit_th:
+                ex = 0.0
+            else:
+                self._center_state = False
+        else:
+            if abs(ex) <= self.center_enter_th:
+                self._center_state = True
+                ex = 0.0
+
+        return -ex if self.flip_x else ex
 
     def _apply_yaw(self, ex: float) -> bool:
         if self.mc is None:
